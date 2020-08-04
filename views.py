@@ -5,6 +5,35 @@ from auth import login_required
 from forms import RegisterForm, LoginForm, TaskForm, DeleteForm
 from models import User, Task
 
+@app.route('/')
+@login_required
+def index(*args, **kwargs):
+    user = kwargs.get('user')
+    return render_template('index.html', user=user, title="Home | ToDoApp")
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        field_username = form.username.data
+        field_password = form.password.data
+        get_user = User.query.filter_by(username=field_username).first()
+        if get_user and get_user.check_password(field_password):
+            flash('Login Success!')
+            session["username"] = field_username
+            return redirect(url_for('index'))
+    else:
+        flash('Login Failed! Wrong Password')
+
+    return render_template('login.html', form=form, title='Login | TodoApp')
+
+@app.route('/logout')
+def logout():
+    if 'username' in session:
+        session.pop('username')
+        flash('You have successfully logged out.')
+    return redirect(url_for('login'))
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegisterForm()
@@ -26,33 +55,12 @@ def register():
 
     return render_template('register.html', form=form, title="Register | TodoApp")
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    form = LoginForm()
-    if form.validate_on_submit():
-        field_username = form.username.data
-        field_password = form.password.data
-        get_user = User.query.filter_by(username=field_username).first()
-        if get_user and get_user.check_password(field_password):
-            flash('Login Success!')
-            session["username"] = field_username
-            return redirect(url_for('index'))
-    else:
-        flash('Login Failed! Wrong Password')
-
-    return render_template('login.html', form=form, title='Login | TodoApp')
-
-@app.route('/')
-def index(*args, **kwargs):
+@app.route('/todos')
+@login_required
+def todo_list(*args, **kwargs):
     user = kwargs.get('user')
-    return render_template('index.html', user=user, title="Home | ToDoApp")
-
-@app.route('/logout')
-def logout():
-    if 'username' in session:
-        session.pop('username')
-        flash('You have successfully logged out.')
-    return redirect(url_for('login'))
+    task_list = Task.query.filter_by(user_id=user.id).all()
+    return render_template('todo/list.html', data_list=task_list, title="Ta Do List | TodoApp")
 
 @app.route('/todos/add', methods=['GET', 'POST'])
 @login_required
@@ -69,13 +77,7 @@ def todo_add(*args, **kwargs):
         return redirect(url_for('todo_list'))
 
     return render_template('todo/add.html', form=form, title="Add Task | TodoApp")
-
-@app.route('/todos')
-@login_required
-def todo_list(*args, **kwargs):
-    user = kwargs.get('user')
-    task_list = Task.query.filter_by(user_id=user.id).all()
-    return render_template('todo/list.html', data_list=task_list, title="Ta Do List | TodoApp")
+    
 
 @app.route('/todos/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
@@ -107,3 +109,7 @@ def todo_delete(*args, **kwargs):
         flash('Your Task has been deleted!')
         return redirect(url_for('todo_list'))
     return render_template('todo/del.html', form=form, title='Delete Task | TodoApp')
+
+
+
+
